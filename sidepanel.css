@@ -1,0 +1,326 @@
+:root {
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface2: #1a1a1a;
+  --overlay: #2a2a2a;
+  --text: #f5f5f5;
+  --subtext: #c4c4c4;
+  --muted: #7d7d7d;
+  --accent: #ffffff;
+  --accent2: #d8d8d8;
+  --green: #b7b7b7;
+  --yellow: #e0e0e0;
+  --red: #8a8a8a;
+  --border: rgba(255, 255, 255, 0.1);
+  --toolbar-h: 64px;
+  --control-h: 34px;
+  --control-w: 34px;
+  --control-gap: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  height: var(--toolbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--control-gap);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.nav-btns,
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--control-gap);
+  flex-shrink: 0;
+}
+
+/* ── URL bar ── */
+.url-bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  height: var(--control-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 6px 0 10px;
+  gap: 2px;
+  transition: border-color 0.2s;
+}
+
+.url-bar:focus-within {
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.scheme {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--subtext);
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+#urlInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 0;
+  height: 100%;
+  line-height: calc(var(--control-h) - 2px);
+}
+
+#urlInput::placeholder { color: var(--muted); }
+
+.url-bar button {
+  background: var(--surface2);
+  border: 1px solid transparent;
+  color: var(--text);
+  cursor: pointer;
+  width: var(--control-w);
+  height: calc(var(--control-h) - 2px);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.url-bar button:hover {
+  color: var(--accent);
+  background: var(--overlay);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* ── Nav buttons ── */
+.nav-btns button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  width: var(--control-w);
+  height: var(--control-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.nav-btns button:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--overlay);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.nav-btns button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── View toggle ── */
+.view-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: var(--control-w);
+  height: var(--control-h);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--subtext);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.toggle-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.toggle-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.toggle-btn.active {
+  background: var(--surface2);
+  color: var(--accent);
+}
+
+/* ── Filter toggle button ── */
+.icon-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  width: var(--control-w);
+  height: var(--control-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.icon-btn:hover {
+  color: var(--accent);
+  background: var(--overlay);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.icon-btn.spinning svg {
+  animation: spin 1s linear infinite;
+}
+
+.icon-btn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.icon-btn.inactive {
+  opacity: 0.72;
+}
+
+.icon-btn.inactive:hover {
+  opacity: 1;
+}
+
+/* ── Frame container ── */
+.frame-container {
+  position: absolute;
+  top: var(--toolbar-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+}
+
+iframe#webFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* ── Mobile scale wrapper ── */
+.mobile-scale-wrap {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #fff;
+}
+
+.mobile-scale-wrap iframe {
+  border: none;
+  display: block;
+  transform-origin: top left;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg);
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-icon {
+  font-size: 32px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--subtext);
+}
+
+.empty-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.empty-rules {
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Loading bar ── */
+.loading-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Animations ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hidden { display: none !important; }

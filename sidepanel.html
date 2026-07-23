@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SideBlock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <div class="toolbar">
+    <div class="nav-btns">
+      <button id="backBtn" title="Back" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+      <button id="forwardBtn" title="Forward" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="url-bar">
+      <span class="scheme" id="scheme">https://</span>
+      <input
+        type="text"
+        id="urlInput"
+        placeholder="enter a url..."
+        spellcheck="false"
+        autocomplete="off"
+      />
+      <button id="goBtn" title="Go">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+      <button id="reloadBtn" title="Reload">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="controls">
+      <div class="view-toggle">
+        <button class="toggle-btn active" id="desktopBtn" title="Desktop" aria-label="Desktop">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </button>
+        <button class="toggle-btn" id="mobileBtn" title="Mobile" aria-label="Mobile">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <button class="icon-btn" id="filterToggleBtn" title="Toggle filter list" aria-label="Toggle filter list">
+        <img id="filterToggleIcon" src="icons/ubo_16.png" alt="" />
+      </button>
+    </div>
+  </div>
+
+  <div class="frame-container" id="frameContainer">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-title">SideBlock</div>
+      <div class="empty-sub">Enter a URL above to get started</div>
+    </div>
+    <iframe
+      id="webFrame"
+      class="hidden"
+      allow="autoplay; encrypted-media; fullscreen; clipboard-read; clipboard-write; geolocation; camera; microphone"
+    ></iframe>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
