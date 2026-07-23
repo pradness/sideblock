@@ -15,7 +15,7 @@ SideBlock is a Chrome Manifest V3 extension that opens websites inside the side 
 1. Open `chrome://extensions` in Chrome.
 2. Enable **Developer mode**.
 3. Click **Load unpacked**.
-4. Select this folder: `browser-ext`.
+4. Select this cloned folder: `sideblock`.
 
 ## Project structure
 
