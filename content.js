@@ -330,3 +330,44 @@
   }
 
 })();
+
+// ── URL change bridge ──────────────────────────────────────────────────────────
+// Saves current URL directly to chrome.storage on every navigation.
+// Uses storage instead of postMessage because cross-origin postMessage
+// to the sidepanel parent is blocked by the browser.
+
+(function () {
+  // Only run in the top frame, not in sub-iframes within the page
+  if (window !== window.top) return;
+
+  function saveCurrentUrl() {
+    const url = location.href;
+    if (!url || url === "about:blank") return;
+    chrome.storage.local.set({ "webframe_live_url": url });
+  }
+
+  // Intercept pushState
+  const _pushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    _pushState(...args);
+    saveCurrentUrl();
+  };
+
+  // Intercept replaceState
+  const _replaceState = history.replaceState.bind(history);
+  history.replaceState = function (...args) {
+    _replaceState(...args);
+    saveCurrentUrl();
+  };
+
+  // popstate fires when user clicks browser back/forward
+  window.addEventListener("popstate", saveCurrentUrl);
+
+  // Also save on initial load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", saveCurrentUrl);
+  } else {
+    saveCurrentUrl();
+  }
+
+})();

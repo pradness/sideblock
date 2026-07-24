@@ -1,23 +1,79 @@
-const urlInput    = document.getElementById("urlInput");
-const scheme      = document.getElementById("scheme");
-const goBtn       = document.getElementById("goBtn");
-const reloadBtn   = document.getElementById("reloadBtn");
-const backBtn     = document.getElementById("backBtn");
-const forwardBtn  = document.getElementById("forwardBtn");
-const desktopBtn  = document.getElementById("desktopBtn");
-const mobileBtn   = document.getElementById("mobileBtn");
-const webFrame    = document.getElementById("webFrame");
-const emptyState  = document.getElementById("emptyState");
-const frameContainer   = document.getElementById("frameContainer");
+const urlInput       = document.getElementById("urlInput");
+const scheme         = document.getElementById("scheme");
+const goBtn          = document.getElementById("goBtn");
+const reloadBtn      = document.getElementById("reloadBtn");
+const backBtn        = document.getElementById("backBtn");
+const forwardBtn     = document.getElementById("forwardBtn");
+const desktopBtn     = document.getElementById("desktopBtn");
+const mobileBtn      = document.getElementById("mobileBtn");
+const webFrame       = document.getElementById("webFrame");
+const emptyState     = document.getElementById("emptyState");
+const frameContainer = document.getElementById("frameContainer");
 const filterToggleBtn  = document.getElementById("filterToggleBtn");
 const filterToggleIcon = document.getElementById("filterToggleIcon");
 
 let currentUrl   = "";
 let isMobile     = false;
-let rulesEnabled  = true;
-let navHistory   = [];
-let historyIndex = -1;
+let rulesEnabled = true;
 let loadTimer    = null;
+let isInternalNav = false;
+let lastTrackedUrl = "";
+
+// ── Session history ────────────────────────────────────────────────────────────
+
+let session = {
+  history: [],
+  index: -1,
+};
+
+function sessionPush(url) {
+  if (session.history[session.index] === url) return;
+  session.history = session.history.slice(0, session.index + 1);
+  session.history.push(url);
+  session.index = session.history.length - 1;
+  updateNavBtns();
+  persistState();
+}
+
+function sessionBack() {
+  if (session.index > 0) {
+    session.index--;
+    updateNavBtns();
+    return session.history[session.index];
+  }
+  return null;
+}
+
+function sessionForward() {
+  if (session.index < session.history.length - 1) {
+    session.index++;
+    updateNavBtns();
+    return session.history[session.index];
+  }
+  return null;
+}
+
+function updateNavBtns() {
+  backBtn.disabled    = session.index <= 0;
+  forwardBtn.disabled = session.index >= session.history.length - 1;
+}
+
+// ── Persist state ──────────────────────────────────────────────────────────────
+
+async function persistState() {
+  const url = session.history[session.index] || currentUrl;
+  await send({
+    action: "saveState",
+    state: {
+      url,
+      isMobile,
+      session: {
+        history: session.history,
+        index: session.index,
+      }
+    }
+  });
+}
 
 // ── Messaging ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +97,14 @@ function stripScheme(url) {
 function updateSchemeLabel(url) {
   scheme.textContent = url.startsWith("http://") ? "http://" : "https://";
 }
+
+function setUrlBar(url) {
+  currentUrl = url;
+  urlInput.value = stripScheme(url);
+  updateSchemeLabel(url);
+}
+
+// ── Filter toggle ──────────────────────────────────────────────────────────────
 
 function setFilterToggleState(enabled) {
   rulesEnabled = enabled;
@@ -128,64 +192,92 @@ window.addEventListener("resize", () => {
   if (isMobile) scaleMobileFrame();
 });
 
-// ── Frame events ───────────────────────────────────────────────────────────────
+// ── iframe load event ──────────────────────────────────────────────────────────
 
 webFrame.addEventListener("load", () => {
   finishLoadingBar();
   if (isMobile) scaleMobileFrame();
 
-  // Try to read the current URL from the frame (works if same-origin,
-  // but after our CSP strip many sites allow this)
+  let frameUrl = "";
   try {
-    const frameUrl = webFrame.contentWindow?.location?.href;
-    if (frameUrl && frameUrl !== "about:blank" && frameUrl !== currentUrl) {
-      currentUrl = frameUrl;
-      urlInput.value = stripScheme(frameUrl);
-      updateSchemeLabel(frameUrl);
-    }
+    frameUrl = webFrame.contentWindow?.location?.href || "";
   } catch (e) {
-    // cross-origin - fine, url stays as what we set
+    frameUrl = webFrame.src || "";
+  }
+
+  if (!frameUrl || frameUrl === "about:blank") return;
+  if (frameUrl.startsWith("blob:") || frameUrl.startsWith("data:")) return;
+
+  setUrlBar(frameUrl);
+
+  if (!isInternalNav && frameUrl !== lastTrackedUrl) {
+    sessionPush(frameUrl);
+  }
+
+  isInternalNav = false;
+  lastTrackedUrl = frameUrl;
+});
+
+// ── Storage change listener ────────────────────────────────────────────────────
+// content.js writes webframe_live_url on every pushState/popstate.
+// We read it here to update the URL bar and session in real time.
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes["rules_enabled"]) {
+    setFilterToggleState(changes["rules_enabled"].newValue !== false);
+  }
+
+  if (changes["webframe_live_url"]) {
+    const url = changes["webframe_live_url"].newValue;
+    if (!url || url === lastTrackedUrl) return;
+
+    setUrlBar(url);
+    lastTrackedUrl = url;
+
+    if (!isInternalNav) {
+      sessionPush(url);
+    }
+    isInternalNav = false;
   }
 });
 
-// ── Navigation ─────────────────────────────────────────────────────────────────
+// ── Navigate ───────────────────────────────────────────────────────────────────
 
-async function navigate(url, pushHistory = true) {
+async function navigate(url, isHistoryNav = false) {
   if (!url) return;
-  currentUrl = url;
-  urlInput.value = stripScheme(url);
-  updateSchemeLabel(url);
 
-  if (pushHistory) {
-    navHistory = navHistory.slice(0, historyIndex + 1);
-    navHistory.push(url);
-    historyIndex = navHistory.length - 1;
-  }
+  setUrlBar(url);
+  isInternalNav = isHistoryNav;
 
-  updateNavBtns();
   showFrame();
   startLoadingBar();
   webFrame.src = url;
 
-  await send({ action: "saveState", state: { url, isMobile } });
-}
+  if (!isHistoryNav) {
+    sessionPush(url);
+  }
 
-function updateNavBtns() {
-  backBtn.disabled  = historyIndex <= 0;
-  forwardBtn.disabled = historyIndex >= navHistory.length - 1;
+  // Clear the live url so it gets re-written by content.js fresh
+  chrome.storage.local.remove("webframe_live_url");
+
+  await persistState();
 }
 
 // ── Event listeners ────────────────────────────────────────────────────────────
 
-goBtn.addEventListener("click", () => {
+function submitUrl() {
   const url = normalize(urlInput.value);
   if (url) navigate(url);
-});
+}
+
+if (goBtn) {
+  goBtn.addEventListener("click", submitUrl);
+}
 
 urlInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    const url = normalize(urlInput.value);
-    if (url) navigate(url);
+    e.preventDefault();
+    submitUrl();
   }
 });
 
@@ -196,22 +288,31 @@ urlInput.addEventListener("input", () => {
 reloadBtn.addEventListener("click", () => {
   if (currentUrl) {
     startLoadingBar();
+    isInternalNav = true;
     webFrame.src = currentUrl;
   }
 });
 
 backBtn.addEventListener("click", () => {
-  if (historyIndex > 0) {
-    historyIndex--;
-    navigate(navHistory[historyIndex], false);
-  }
+  const url = sessionBack();
+  if (!url) return;
+  setUrlBar(url);
+  isInternalNav = true;
+  showFrame();
+  startLoadingBar();
+  webFrame.src = url;
+  persistState();
 });
 
 forwardBtn.addEventListener("click", () => {
-  if (historyIndex < navHistory.length - 1) {
-    historyIndex++;
-    navigate(navHistory[historyIndex], false);
-  }
+  const url = sessionForward();
+  if (!url) return;
+  setUrlBar(url);
+  isInternalNav = true;
+  showFrame();
+  startLoadingBar();
+  webFrame.src = url;
+  persistState();
 });
 
 desktopBtn.addEventListener("click", async () => {
@@ -220,8 +321,8 @@ desktopBtn.addEventListener("click", async () => {
   desktopBtn.classList.add("active");
   mobileBtn.classList.remove("active");
   applyMobileLayout(false);
-  if (currentUrl) { startLoadingBar(); webFrame.src = currentUrl; }
-  await send({ action: "saveState", state: { url: currentUrl, isMobile: false } });
+  if (currentUrl) { isInternalNav = true; startLoadingBar(); webFrame.src = currentUrl; }
+  await persistState();
 });
 
 mobileBtn.addEventListener("click", async () => {
@@ -230,24 +331,16 @@ mobileBtn.addEventListener("click", async () => {
   mobileBtn.classList.add("active");
   desktopBtn.classList.remove("active");
   applyMobileLayout(true);
-  if (currentUrl) { startLoadingBar(); webFrame.src = currentUrl; }
-  await send({ action: "saveState", state: { url: currentUrl, isMobile: true } });
+  if (currentUrl) { isInternalNav = true; startLoadingBar(); webFrame.src = currentUrl; }
+  await persistState();
 });
 
 filterToggleBtn.addEventListener("click", async () => {
   filterToggleBtn.disabled = true;
   const response = await send({ action: "toggleFilters" });
   filterToggleBtn.disabled = false;
-
   if (response && typeof response.enabled === "boolean") {
     setFilterToggleState(response.enabled);
-  }
-});
-
-// ── Storage change listener ────────────────────────────────────────────────────
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes["rules_enabled"]) {
-    setFilterToggleState(changes["rules_enabled"].newValue !== false);
   }
 });
 
@@ -255,6 +348,7 @@ chrome.storage.onChanged.addListener((changes) => {
 
 async function init() {
   const state = await send({ action: "getState" });
+
   isMobile = state.isMobile || false;
   setFilterToggleState(state.rulesEnabled !== false);
 
@@ -264,13 +358,54 @@ async function init() {
     applyMobileLayout(true);
   }
 
-  if (state.url) {
-    navigate(state.url, true);
+  // Prefer the live URL saved by content.js over the session-saved URL.
+  // This is the most accurate URL - written on every pushState by the page.
+  const liveData = await new Promise((resolve) => {
+    chrome.storage.local.get("webframe_live_url", resolve);
+  });
+
+  const liveUrl = liveData["webframe_live_url"];
+
+  // Restore session history
+  if (state.session && state.session.history && state.session.history.length > 0) {
+    session.history = state.session.history;
+    session.index   = state.session.index ?? state.session.history.length - 1;
+
+    // If content.js saved a more recent URL, update the session tip
+    if (liveUrl && liveUrl !== session.history[session.index]) {
+      // Push it so back button still works
+      session.history = session.history.slice(0, session.index + 1);
+      session.history.push(liveUrl);
+      session.index = session.history.length - 1;
+    }
+
+    updateNavBtns();
+
+    const url = session.history[session.index];
+    if (url) {
+      setUrlBar(url);
+      lastTrackedUrl = url;
+      isInternalNav = true;
+      showFrame();
+      startLoadingBar();
+      webFrame.src = url;
+      return;
+    }
+  }
+
+  // Fallback to just the live URL or saved URL
+  const url = liveUrl || state.url;
+  if (url) {
+    setUrlBar(url);
+    lastTrackedUrl = url;
+    isInternalNav = true;
+    showFrame();
+    startLoadingBar();
+    webFrame.src = url;
+    sessionPush(url);
   } else {
     showEmpty();
   }
-
-  updateNavBtns();
 }
 
 init();

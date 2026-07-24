@@ -4,13 +4,12 @@ const EASYPRIVACY_URL = "https://easylist.to/easylist/easyprivacy.txt";
 const STORAGE_KEY = "cached_rules";
 const LAST_FETCH_KEY = "last_fetch";
 const ENABLED_KEY = "rules_enabled";
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+const REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
 const MAX_SESSION_RULES = 4900;
 const HEADER_RULE_ID = 1;
 const BLOCK_RULES_START_ID = 10;
 
 chrome.runtime.onInstalled.addListener(() => {
-  // This makes clicking the extension icon open the side panel automatically
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   init();
   chrome.alarms.create("refreshRules", { periodInMinutes: 1440 });
@@ -21,18 +20,12 @@ chrome.runtime.onStartup.addListener(() => {
   init();
 });
 
-// ── Filter list parser ─────────────────────────────────────────────────────────
-// Converts ABP/uBlock filter syntax to declarativeNetRequest rules.
-// Handles the patterns that cover ~90% of real ad blocking.
-
 function parseFilters(text) {
   const rules = [];
   const lines = text.split("\n");
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
-
-    // Skip comments, empty lines, cosmetic filters, snippet filters
     if (!line) continue;
     if (line.startsWith("!")) continue;
     if (line.startsWith("[")) continue;
@@ -40,23 +33,19 @@ function parseFilters(text) {
     if (line.includes("#@#")) continue;
     if (line.includes("#?#")) continue;
     if (line.includes("#$#")) continue;
-    if (line.startsWith("@@")) continue; // skip whitelist rules for now
+    if (line.startsWith("@@")) continue;
 
-    // Only process network blocking rules
-    // Must not contain unsupported option types
     const optionsSplit = line.split("$");
     let pattern = optionsSplit[0];
     const optionsStr = optionsSplit.slice(1).join("$");
 
-    // Skip if pattern is empty
     if (!pattern) continue;
 
-    // Parse options
     const options = optionsStr ? optionsStr.split(",") : [];
     const resourceTypes = [];
     let thirdPartyOnly = false;
-
     let skipRule = false;
+
     for (const opt of options) {
       const o = opt.trim().toLowerCase();
       if (o === "script") resourceTypes.push("script");
@@ -71,7 +60,7 @@ function parseFilters(text) {
       else if (o === "other") resourceTypes.push("other");
       else if (o === "font") resourceTypes.push("font");
       else if (o === "third-party" || o === "3p") thirdPartyOnly = true;
-      else if (o === "important") { /* keep, just means high priority */ }
+      else if (o === "important") {}
       else if (
         o.startsWith("~") ||
         o === "first-party" || o === "1p" ||
@@ -93,7 +82,6 @@ function parseFilters(text) {
 
     if (skipRule) continue;
 
-    // Convert filter pattern to urlFilter
     let urlFilter = patternToUrlFilter(pattern);
     if (!urlFilter) continue;
 
@@ -125,44 +113,15 @@ function parseFilters(text) {
 }
 
 function patternToUrlFilter(pattern) {
-  // Already a regex - skip (declarativeNetRequest doesn't support full regex in urlFilter easily)
   if (pattern.startsWith("/") && pattern.endsWith("/")) return null;
-
-  // Very short patterns cause too many false positives
   if (pattern.length < 4) return null;
-
   let filter = pattern;
-
-  // Handle || (domain anchor) - matches start of domain
-  // ||example.com^ -> urlFilter: ||example.com^
-  // This is actually native declarativeNetRequest syntax, pass through
-
-  // Handle @ anchors, convert to declarativeNetRequest equivalents
-  // |https://example.com -> |https://example.com (left anchor)
-  // example.com| -> example.com| (right anchor)
-
-  // Replace * wildcards - already supported
-  // Replace ^ separator character - already supported in urlFilter
-
-  // Remove unsupported special constructs
-  filter = filter.replace(/\[.*?\]/g, "*"); // remove character classes
-
-  // If pattern has no special chars and is just a plain string, it's a substring match
-  // declarativeNetRequest urlFilter treats plain strings as substring matches - good
-
-  // Validate: urlFilter must not be empty after processing
+  filter = filter.replace(/\[.*?\]/g, "*");
   if (!filter || filter === "*") return null;
-
-  // Skip overly broad patterns
   if (filter === "^" || filter === "|" || filter === "||") return null;
-
-  // declarativeNetRequest urlFilter max length
   if (filter.length > 2000) return null;
-
   return filter;
 }
-
-// ── Rule application ───────────────────────────────────────────────────────────
 
 function applyHeaderRule() {
   return new Promise((resolve) => {
@@ -189,7 +148,6 @@ function applyHeaderRule() {
 }
 
 async function applyBlockRules(rules) {
-  // Get current session rules to find existing block rule IDs to remove
   const existing = await new Promise((resolve) => {
     chrome.declarativeNetRequest.getSessionRules(resolve);
   });
@@ -198,7 +156,6 @@ async function applyBlockRules(rules) {
     .filter(r => r.id >= BLOCK_RULES_START_ID)
     .map(r => r.id);
 
-  // Assign IDs
   const namedRules = rules.map((r, i) => ({ ...r, id: BLOCK_RULES_START_ID + i }));
 
   return new Promise((resolve) => {
@@ -241,8 +198,6 @@ async function setRulesEnabled(enabled) {
   return { enabled: true };
 }
 
-// ── Fetch and update ───────────────────────────────────────────────────────────
-
 async function fetchFilterList(url) {
   try {
     const response = await fetch(url);
@@ -255,15 +210,12 @@ async function fetchFilterList(url) {
 }
 
 async function updateRules(force = false) {
-  // Check if we need to refresh
   const stored = await getStored([STORAGE_KEY, LAST_FETCH_KEY, ENABLED_KEY]);
-
   const lastFetch = stored[LAST_FETCH_KEY] || 0;
   const now = Date.now();
   const enabled = stored[ENABLED_KEY] !== false;
 
   if (!force && stored[STORAGE_KEY] && (now - lastFetch) < REFRESH_INTERVAL) {
-    // Use cached rules
     console.log("Using cached rules:", stored[STORAGE_KEY].length);
     await applyBlockRules(enabled ? stored[STORAGE_KEY] : []);
     return;
@@ -271,7 +223,6 @@ async function updateRules(force = false) {
 
   console.log("Fetching fresh filter lists...");
 
-  // Fetch all three lists in parallel
   const [ublock, easylist, easyprivacy] = await Promise.all([
     fetchFilterList(FILTER_LIST_URL),
     fetchFilterList(EASYLIST_URL),
@@ -285,20 +236,17 @@ async function updateRules(force = false) {
     console.log(`uBlock filters: ${rules.length} rules`);
     allRules = allRules.concat(rules);
   }
-
   if (easylist && allRules.length < MAX_SESSION_RULES) {
     const rules = parseFilters(easylist);
     console.log(`EasyList: ${rules.length} rules`);
     allRules = allRules.concat(rules);
   }
-
   if (easyprivacy && allRules.length < MAX_SESSION_RULES) {
     const rules = parseFilters(easyprivacy);
     console.log(`EasyPrivacy: ${rules.length} rules`);
     allRules = allRules.concat(rules);
   }
 
-  // Deduplicate by urlFilter
   const seen = new Set();
   allRules = allRules.filter(r => {
     if (seen.has(r.condition.urlFilter)) return false;
@@ -306,11 +254,9 @@ async function updateRules(force = false) {
     return true;
   });
 
-  // Cap at session rule limit
   allRules = allRules.slice(0, MAX_SESSION_RULES);
   console.log(`Total rules after dedup: ${allRules.length}`);
 
-  // Cache to storage (without IDs, those get assigned on apply)
   await new Promise((resolve) => {
     chrome.storage.local.set({
       [STORAGE_KEY]: allRules,
@@ -321,49 +267,49 @@ async function updateRules(force = false) {
   await applyBlockRules(enabled ? allRules : []);
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────────
-
 async function init() {
   await applyHeaderRule();
   await updateRules();
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  init();
-  // Schedule periodic refresh using alarms
-  chrome.alarms.create("refreshRules", { periodInMinutes: 1440 }); // 24 hours
-});
-
-chrome.runtime.onStartup.addListener(() => {
-  init();
-});
-
-// Re-apply on alarm (service workers can die and restart)
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refreshRules") {
     updateRules(true);
   }
 });
 
-// Also re-apply header rule whenever service worker wakes
 applyHeaderRule();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     switch (msg.action) {
-      case "getState":
+
+      case "getState": {
         const stored = await getStored(["webframe_state", ENABLED_KEY]);
-        sendResponse({ url: "", isMobile: false, rulesEnabled: stored[ENABLED_KEY] !== false, ...(stored["webframe_state"] || {}) });
+        sendResponse({
+          url: "",
+          isMobile: false,
+          rulesEnabled: stored[ENABLED_KEY] !== false,
+          // also return full saved session
+          session: stored["webframe_state"]?.session || null,
+          ...(stored["webframe_state"] || {})
+        });
         break;
-      case "saveState":
+      }
+
+      case "saveState": {
         await new Promise((resolve) => {
           chrome.storage.local.set({ "webframe_state": msg.state }, resolve);
         });
         sendResponse({ ok: true });
         break;
-      case "toggleFilters":
+      }
+
+      case "toggleFilters": {
         sendResponse(await setRulesEnabled(!(await getRulesEnabled())));
         break;
+      }
+
       default:
         sendResponse({ error: "unknown action" });
     }

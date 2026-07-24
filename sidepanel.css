@@ -12,10 +12,10 @@
   --yellow: #e0e0e0;
   --red: #8a8a8a;
   --border: rgba(255, 255, 255, 0.1);
-  --toolbar-h: 64px;
-  --control-h: 34px;
-  --control-w: 34px;
-  --control-gap: 6px;
+  --toolbar-h: 48px;
+  --btn-h: 28px;
+  --btn-w: 24px;
+  --control-gap: 4px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,21 +35,45 @@ html, body {
   height: var(--toolbar-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 8px 10px;
+  padding: 0 8px;
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--control-gap);
   flex-shrink: 0;
-  overflow: hidden;
 }
 
-.nav-btns,
-.controls {
+/* ── Nav buttons ── */
+.nav-btns {
   display: flex;
   align-items: center;
-  gap: var(--control-gap);
+  gap: 0;
   flex-shrink: 0;
+}
+
+.nav-btns button {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--subtext);
+  cursor: pointer;
+  width: var(--btn-w);
+  height: var(--btn-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  padding: 0;
+}
+
+.nav-btns button:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--surface2);
+}
+
+.nav-btns button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
 }
 
 /* ── URL bar ── */
@@ -58,23 +82,23 @@ html, body {
   align-items: center;
   min-width: 0;
   flex: 1;
-  height: var(--control-h);
+  height: var(--btn-h);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0 6px 0 10px;
-  gap: 2px;
+  border-radius: 8px;
+  padding: 0 8px;
+  gap: 4px;
   transition: border-color 0.2s;
 }
 
 .url-bar:focus-within {
-  border-color: rgba(255, 255, 255, 0.38);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .scheme {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  color: var(--subtext);
+  color: var(--muted);
   white-space: nowrap;
   user-select: none;
   flex-shrink: 0;
@@ -91,56 +115,16 @@ html, body {
   font-size: 11px;
   padding: 0;
   height: 100%;
-  line-height: calc(var(--control-h) - 2px);
 }
 
 #urlInput::placeholder { color: var(--muted); }
 
-.url-bar button {
-  background: var(--surface2);
-  border: 1px solid transparent;
-  color: var(--text);
-  cursor: pointer;
-  width: var(--control-w);
-  height: calc(var(--control-h) - 2px);
-  border-radius: 8px;
+/* ── Controls ── */
+.controls {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--control-gap);
   flex-shrink: 0;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-}
-
-.url-bar button:hover {
-  color: var(--accent);
-  background: var(--overlay);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-/* ── Nav buttons ── */
-.nav-btns button {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  cursor: pointer;
-  width: var(--control-w);
-  height: var(--control-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.nav-btns button:hover:not(:disabled) {
-  color: var(--accent);
-  background: var(--overlay);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.nav-btns button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 
 /* ── View toggle ── */
@@ -148,9 +132,9 @@ html, body {
   display: flex;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 2px;
-  gap: 2px;
+  gap: 1px;
   flex-shrink: 0;
 }
 
@@ -158,29 +142,19 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  width: var(--control-w);
-  height: var(--control-h);
+  width: var(--btn-w);
+  height: calc(var(--btn-h) - 6px);
   background: transparent;
   border: none;
-  border-radius: 7px;
-  color: var(--subtext);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 5px;
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.15s;
-  white-space: nowrap;
 }
 
 .toggle-btn:hover:not(.active) {
   color: var(--text);
   background: var(--surface2);
-}
-
-.toggle-btn svg {
-  width: 13px;
-  height: 13px;
 }
 
 .toggle-btn.active {
@@ -190,42 +164,37 @@ html, body {
 
 /* ── Filter toggle button ── */
 .icon-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
   color: var(--text);
   cursor: pointer;
-  width: var(--control-w);
-  height: var(--control-h);
+  width: var(--btn-w);
+  height: var(--btn-h);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.15s;
+  padding: 0;
 }
 
 .icon-btn:hover {
-  color: var(--accent);
-  background: var(--overlay);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.icon-btn.spinning svg {
-  animation: spin 1s linear infinite;
+  background: var(--surface2);
 }
 
 .icon-btn img {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   display: block;
 }
 
 .icon-btn.inactive {
-  opacity: 0.72;
+  opacity: 0.4;
 }
 
 .icon-btn.inactive:hover {
-  opacity: 1;
+  opacity: 0.7;
 }
 
 /* ── Frame container ── */
@@ -274,13 +243,13 @@ iframe#webFrame {
 }
 
 .empty-icon {
-  font-size: 32px;
+  font-size: 28px;
   color: var(--muted);
   margin-bottom: 4px;
 }
 
 .empty-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--subtext);
 }
@@ -288,21 +257,6 @@ iframe#webFrame {
 .empty-sub {
   font-size: 11px;
   color: var(--muted);
-}
-
-.empty-rules {
-  margin-top: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  padding: 6px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ── Loading bar ── */
