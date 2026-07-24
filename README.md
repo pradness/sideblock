@@ -1,4 +1,13 @@
-# SideBlock
+<table>
+  <tr>
+    <td width="60">
+      <img src="./icons/icon512.png" alt="SideBlock Icon" width="50" />
+    </td>
+    <td>
+      <h1>SideBlock</h1>
+    </td>
+  </tr>
+</table>
 
 SideBlock is a Chrome Manifest V3 extension that opens websites inside the side panel and applies a lightweight filter list based on uBlock-style filter sources.
 
